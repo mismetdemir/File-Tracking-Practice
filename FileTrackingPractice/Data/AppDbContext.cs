@@ -16,6 +16,8 @@ namespace FileTrackingPractice.Data
                 entity.HasKey(file => file.Id);
                 entity.Property(file => file.Name).IsRequired().HasMaxLength(255);
                 entity.Property(file => file.Extension).IsRequired().HasMaxLength(10);
+                entity.Property(file => file.Path).IsRequired().HasMaxLength(1024);
+                entity.HasIndex(file => file.Path).IsUnique();
             });
         }
     }

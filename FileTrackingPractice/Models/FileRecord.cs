@@ -8,5 +8,6 @@
         public long Size { get; set; }
         public DateTime CreatedAt { get; set; }
         public DateTime LastModifiedAt { get; set; }
+        public string Path { get; set; } = string.Empty;
     }
 }
