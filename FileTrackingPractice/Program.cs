@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using FileTrackingPractice.Data;
+using FileTrackingPractice.Config;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +12,9 @@ builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlite(
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services.Configure<FileScanSettings>(
+    builder.Configuration.GetSection("FileScan"));
 
 var app = builder.Build();
 
