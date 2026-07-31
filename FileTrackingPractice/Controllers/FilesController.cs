@@ -1,11 +1,11 @@
-﻿using FileTrackingPractice.Config;
+﻿using FileTrackingPractice.Mappings;
+using FileTrackingPractice.Config;
 using FileTrackingPractice.Data;
 using FileTrackingPractice.DTOs;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
-using FileTrackingPractice.Mappings;
+
 
 namespace FileTrackingPractice.Controllers
 {
@@ -47,6 +47,28 @@ namespace FileTrackingPractice.Controllers
             var fileDto = FileRecordMapper.MapToDto(fileRecord, _settings.FolderPath);
 
             return Ok(fileDto);
+        }
+
+        [HttpGet("search")]
+        public async Task<ActionResult<List<FileRecordDto>>> SearchByExtensionAsync(
+            [FromQuery] string extension,
+            CancellationToken cancelToken)
+        {
+            if (string.IsNullOrEmpty(extension))
+            {
+                return BadRequest(new
+                {
+                    Message = "Extension is required"
+                });
+            }
+
+            var normalizedExtension = extension.Trim().TrimStart('.').ToLower();
+            var fileRecords = await _context.FileRecords
+                .Where(file => file.Extension == normalizedExtension)
+                .ToListAsync(cancelToken);
+            var files = fileRecords.Select(file => FileRecordMapper.MapToDto(file, _settings.FolderPath)).ToList();
+
+            return Ok(files);
         }
     }
 }
