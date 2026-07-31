@@ -3,9 +3,9 @@ using FileTrackingPractice.Models;
 
 namespace FileTrackingPractice.Mappings
 {
-    public class FileRecordMapper
+    public static class FileRecordMapper
     {
-        public FileRecordDto MapToDto(FileRecord fileRecord, string rootFolderPath)
+        public static FileRecordDto MapToDto(FileRecord fileRecord, string rootFolderPath)
         {
             var rootPath = Path.GetFullPath(rootFolderPath);
 
