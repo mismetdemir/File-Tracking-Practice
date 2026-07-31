@@ -74,7 +74,7 @@ namespace FileTrackingPractice.Services
                     var fileRecord = new FileRecord
                     {
                         Name = fileInfo.Name,
-                        Extension = fileInfo.Extension,
+                        Extension = fileInfo.Extension.TrimStart('.').ToLower(),
                         Size = fileInfo.Length,
                         CreatedAt = fileInfo.CreationTime,
                         LastModifiedAt = fileInfo.LastWriteTime,
