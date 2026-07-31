@@ -30,5 +30,23 @@ namespace FileTrackingPractice.Controllers
 
             return Ok(files);
         }
+
+        [HttpGet("{id:int}")]
+        public async Task<ActionResult<FileRecordDto>> GetByIdAsync(int id, CancellationToken cancelToken)
+        {
+            var fileRecord = await _context.FileRecords.FirstOrDefaultAsync(file => file.Id == id, cancelToken);
+
+            if (fileRecord == null)
+            {
+                return NotFound(new
+                {
+                    Message = $"File record with ID {id} was not found"
+                });
+            }
+
+            var fileDto = FileRecordMapper.MapToDto(fileRecord, _settings.FolderPath);
+
+            return Ok(fileDto);
+        }
     }
 }
