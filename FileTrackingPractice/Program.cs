@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using FileTrackingPractice.Data;
 using FileTrackingPractice.Config;
+using FileTrackingPractice.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,8 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.Configure<FileScanSettings>(
     builder.Configuration.GetSection("FileScan"));
+
+builder.Services.AddScoped<IFileScannerService, FileScannerService>();
 
 var app = builder.Build();
 

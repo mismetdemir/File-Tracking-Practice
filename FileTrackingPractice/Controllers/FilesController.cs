@@ -1,4 +1,5 @@
 ﻿using FileTrackingPractice.Mappings;
+using FileTrackingPractice.Services;
 using FileTrackingPractice.Config;
 using FileTrackingPractice.Data;
 using FileTrackingPractice.DTOs;
@@ -15,11 +16,16 @@ namespace FileTrackingPractice.Controllers
     {
         private readonly AppDbContext _context;
         private readonly FileScanSettings _settings;
+        private readonly IFileScannerService _fileScannerService;
 
-        public FilesController(AppDbContext context, IOptions<FileScanSettings> settings)
+        public FilesController(
+            AppDbContext context, 
+            IOptions<FileScanSettings> settings,
+            IFileScannerService fileScannerService)
         {
             _context = context;
             _settings = settings.Value;
+            _fileScannerService = fileScannerService;
         }
 
         [HttpGet]
@@ -69,6 +75,14 @@ namespace FileTrackingPractice.Controllers
             var files = fileRecords.Select(file => FileRecordMapper.MapToDto(file, _settings.FolderPath)).ToList();
 
             return Ok(files);
+        }
+
+        [HttpPost("scan")]
+        public async Task<ActionResult<ScanResultDto>> ScanAsync(CancellationToken cancelToken)
+        {
+            var result = await _fileScannerService.ScanAsync(cancelToken);
+
+            return Ok(result);
         }
     }
 }
