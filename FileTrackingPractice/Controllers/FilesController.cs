@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Microsoft.EntityFrameworkCore;
+using FileTrackingPractice.Mappings;
 
 namespace FileTrackingPractice.Controllers
 {
@@ -25,17 +26,7 @@ namespace FileTrackingPractice.Controllers
         public async Task<ActionResult<List<FileRecordDto>>> GetAllAsync(CancellationToken cancelToken)
         {
             var fileRecords = await _context.FileRecords.ToListAsync(cancelToken);
-            var rootPath = System.IO.Path.GetFullPath(_settings.FolderPath);
-            var files = fileRecords.Select(file => new FileRecordDto
-            {
-                Id = file.Id,
-                Name = file.Name,
-                Extension = file.Extension,
-                Size = file.Size,
-                CreatedAt = file.CreatedAt,
-                LastModifiedAt = file.LastModifiedAt,
-                RelativePath = System.IO.Path.GetRelativePath(rootPath, file.Path)
-            }).ToList();
+            var files = fileRecords.Select(file => FileRecordMapper.MapToDto(file, _settings.FolderPath)).ToList();
 
             return Ok(files);
         }
