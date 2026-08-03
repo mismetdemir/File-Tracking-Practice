@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using FileTrackingPractice.Data;
 using FileTrackingPractice.Config;
 using FileTrackingPractice.Services;
+using FileTrackingPractice.BackgroundServices;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +19,7 @@ builder.Services.Configure<FileScanSettings>(
     builder.Configuration.GetSection("FileScan"));
 
 builder.Services.AddScoped<IFileScannerService, FileScannerService>();
+builder.Services.AddHostedService<AutoFileScanService>();
 
 var app = builder.Build();
 
