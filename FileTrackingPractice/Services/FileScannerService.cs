@@ -48,6 +48,7 @@ namespace FileTrackingPractice.Services
 
             result.FilesFound = filePaths.Count;
 
+            var existingPaths = await _context.FileRecords.Select(file => file.Path).ToHashSetAsync(cancelToken);   
 
             foreach (var filePath in filePaths)
             {
@@ -57,17 +58,12 @@ namespace FileTrackingPractice.Services
                 {
                     var currentPath = Path.GetFullPath(filePath);
 
-                    var alreadyExists = await _context.FileRecords.AnyAsync(
-                        file => file.Path == currentPath,
-                        cancelToken);
-
-                    if (alreadyExists)
+                    if (existingPaths.Contains(currentPath))
                     {
                         result.FilesSkipped++;
-                        _logger.LogInformation("File {filePath} skipped because it already processed", filePath);
+                        _logger.LogDebug("File {filePath} skipped because it already processed", filePath);
                         continue;
                     }
-
 
                     var fileInfo = new FileInfo(currentPath);
                     var fileRecord = new FileRecord
