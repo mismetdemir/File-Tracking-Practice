@@ -22,17 +22,17 @@ namespace FileTrackingPractice.BackgroundServices
 
         protected override async Task ExecuteAsync(CancellationToken cancelToken)
         {
-            if (_settings.IntervalInSeconds < 0)
+            if (_settings.IntervalInSeconds <= 0)
             {
                 _logger.LogError("File scan interval must be greater than zero");
                 return;
             }
-
+                
             while (!cancelToken.IsCancellationRequested)
             {
                 try
                 {
-                    var scope = _scopeFactory.CreateScope();
+                    using var scope = _scopeFactory.CreateScope();
                     var fileScannerService = scope.ServiceProvider.GetRequiredService<IFileScannerService>();
 
                     await fileScannerService.ScanAsync(cancelToken);
