@@ -1,6 +1,7 @@
 ﻿using FileTrackingPractice.Config;
 using FileTrackingPractice.Data;
 using FileTrackingPractice.DTOs;
+using FileTrackingPractice.Exceptions;
 using FileTrackingPractice.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -29,7 +30,7 @@ namespace FileTrackingPractice.Services
 
             if (string.IsNullOrEmpty(_settings.FolderPath))
             {
-                throw new InvalidOperationException("Scan folder is not configured");
+                throw new FileScanConfigurationException("Scan folder is not configured");
             }
 
             if (!Directory.Exists(_settings.FolderPath))

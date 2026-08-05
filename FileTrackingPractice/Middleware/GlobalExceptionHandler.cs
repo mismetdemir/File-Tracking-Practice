@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using FileTrackingPractice.Exceptions;
 
 namespace FileTrackingPractice.ExceptionHandlers
 {
@@ -38,18 +39,25 @@ namespace FileTrackingPractice.ExceptionHandlers
         {
             var problemDetails = ex switch
             {
-                InvalidOperationException => new ProblemDetails
+                FileScanConfigurationException => new ProblemDetails
                 {
                     Status = StatusCodes.Status500InternalServerError,
                     Title = "Scan folder configuration error",
-                    Detail = "File scan folder is not configured"
+                    Detail = ex.Message
+                },
+
+                InvalidOperationException => new ProblemDetails
+                {
+                    Status = StatusCodes.Status500InternalServerError,
+                    Title = "Invalid operation",
+                    Detail = "System is not suitable for this operation"
                 },
 
                 DirectoryNotFoundException => new ProblemDetails
                 {
                     Status = StatusCodes.Status500InternalServerError,
                     Title = "Scan folder not found",
-                    Detail = "Configured scan folder could not be found"
+                    Detail = ex.Message
                 },
 
                 UnauthorizedAccessException => new ProblemDetails
