@@ -3,6 +3,7 @@ using FileTrackingPractice.Data;
 using FileTrackingPractice.Config;
 using FileTrackingPractice.Services;
 using FileTrackingPractice.BackgroundServices;
+using FileTrackingPractice.ExceptionHandlers;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +22,8 @@ builder.Services.Configure<FileScanSettings>(
 builder.Services.AddScoped<IFileScannerService, FileScannerService>();
 builder.Services.AddHostedService<AutoFileScanService>();
 
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -29,6 +32,8 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
+
+app.UseExceptionHandler();
 
 app.UseHttpsRedirection();
 
