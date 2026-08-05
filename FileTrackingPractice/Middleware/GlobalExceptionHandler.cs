@@ -3,7 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using FileTrackingPractice.Exceptions;
 
-namespace FileTrackingPractice.ExceptionHandlers
+namespace FileTrackingPractice.Middleware
 {
     public class GlobalExceptionHandler : IExceptionHandler
     {
@@ -20,6 +20,16 @@ namespace FileTrackingPractice.ExceptionHandlers
             Exception ex,
             CancellationToken cancelToken)
         {
+            if (ex is OperationCanceledException && httpContext.RequestAborted.IsCancellationRequested)
+            {
+                _logger.LogDebug(
+                    "Request was cancelled by the client: {Method} {Path}",
+                    httpContext.Request.Method,
+                    httpContext.Request.Path);
+
+                return true;
+            }
+
             _logger.LogError(
                 ex,
                 "An unhandled exception occured while processing {Method} {Path}",
