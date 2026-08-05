@@ -34,7 +34,6 @@ namespace FileTrackingPractice.Services
 
             if (!Directory.Exists(_settings.FolderPath))
             {
-                _logger.LogError("Scan folder {FolderPath} does not exist", _settings.FolderPath);
                 throw new DirectoryNotFoundException($"Scan folder '{_settings.FolderPath}' does not exist");
             }
 
