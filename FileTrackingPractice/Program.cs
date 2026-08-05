@@ -3,7 +3,7 @@ using FileTrackingPractice.Data;
 using FileTrackingPractice.Config;
 using FileTrackingPractice.Services;
 using FileTrackingPractice.BackgroundServices;
-using FileTrackingPractice.ExceptionHandlers;
+using FileTrackingPractice.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
