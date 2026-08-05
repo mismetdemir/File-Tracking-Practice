@@ -45,7 +45,7 @@ namespace FileTrackingPractice.Middleware
             return true;
         }
 
-        public ProblemDetails CreateProblemDetails(HttpContext httpContext, Exception ex)
+        private ProblemDetails CreateProblemDetails(HttpContext httpContext, Exception ex)
         {
             var problemDetails = ex switch
             {
