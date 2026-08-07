@@ -10,6 +10,8 @@ namespace FileTrackingPractice.Services
 {
     public class FileScannerService : IFileScannerService
     {
+        private static readonly SemaphoreSlim _scanLock = new SemaphoreSlim(1, 1);
+
         private readonly AppDbContext _context;
         private readonly FileScanSettings _settings;
         private readonly ILogger<FileScannerService> _logger;
@@ -26,8 +28,6 @@ namespace FileTrackingPractice.Services
 
         public async Task<ScanResultDto> ScanAsync(CancellationToken cancelToken = default)
         {
-            var result = new ScanResultDto { ScanStartedAt = DateTime.Now };
-
             if (string.IsNullOrEmpty(_settings.FolderPath))
             {
                 throw new FileScanConfigurationException("Scan folder is not configured");
@@ -38,67 +38,78 @@ namespace FileTrackingPractice.Services
                 throw new DirectoryNotFoundException($"Scan folder '{_settings.FolderPath}' does not exist");
             }
 
-            _logger.LogInformation("File scan started for folder {FolderPath}", _settings.FolderPath);
+            await _scanLock.WaitAsync(cancelToken);
 
 
-            var filePaths = Directory.EnumerateFiles(
-                _settings.FolderPath,
-                "*", 
-                SearchOption.AllDirectories)
-            .ToList();
-
-            result.FilesFound = filePaths.Count;
-
-            var existingPaths = await _context.FileRecords.Select(file => file.Path).ToHashSetAsync(cancelToken);   
-
-            foreach (var filePath in filePaths)
+            try
             {
-                cancelToken.ThrowIfCancellationRequested();
+                var result = new ScanResultDto { ScanStartedAt = DateTime.Now };
 
-                try
+                _logger.LogInformation("File scan started for folder {FolderPath}", _settings.FolderPath);
+
+                var filePaths = Directory.EnumerateFiles(
+                    _settings.FolderPath,
+                    "*",
+                    SearchOption.AllDirectories)
+                .ToList();
+
+                result.FilesFound = filePaths.Count;
+
+                var existingPaths = await _context.FileRecords.Select(file => file.Path).ToHashSetAsync(cancelToken);
+
+                foreach (var filePath in filePaths)
                 {
-                    var currentPath = Path.GetFullPath(filePath);
+                    cancelToken.ThrowIfCancellationRequested();
 
-                    if (existingPaths.Contains(currentPath))
+                    try
                     {
-                        result.FilesSkipped++;
-                        _logger.LogDebug("File {filePath} skipped because it already processed", filePath);
-                        continue;
+                        var currentPath = Path.GetFullPath(filePath);
+
+                        if (existingPaths.Contains(currentPath))
+                        {
+                            result.FilesSkipped++;
+                            _logger.LogDebug("File {filePath} skipped because it already processed", filePath);
+                            continue;
+                        }
+
+                        var fileInfo = new FileInfo(currentPath);
+                        var fileRecord = new FileRecord
+                        {
+                            Name = fileInfo.Name,
+                            Extension = fileInfo.Extension.TrimStart('.').ToLower(),
+                            Size = fileInfo.Length,
+                            CreatedAt = fileInfo.CreationTime,
+                            LastModifiedAt = fileInfo.LastWriteTime,
+                            Path = currentPath
+                        };
+
+                        await _context.FileRecords.AddAsync(fileRecord, cancelToken);
+                        result.FilesAdded++;
+                        _logger.LogInformation("File {filePath} was staged for database insertion", filePath);
                     }
-
-                    var fileInfo = new FileInfo(currentPath);
-                    var fileRecord = new FileRecord
+                    catch (Exception ex) when (ex is not OperationCanceledException)
                     {
-                        Name = fileInfo.Name,
-                        Extension = fileInfo.Extension.TrimStart('.').ToLower(),
-                        Size = fileInfo.Length,
-                        CreatedAt = fileInfo.CreationTime,
-                        LastModifiedAt = fileInfo.LastWriteTime,
-                        Path = currentPath
-                    };
-
-                    await _context.FileRecords.AddAsync(fileRecord, cancelToken);
-                    result.FilesAdded++;
-                    _logger.LogInformation("File {filePath} was staged for database insertion", filePath);
-                } 
-                catch (Exception ex) when (ex is not OperationCanceledException)
-                {
-                    result.FilesFailed++;
-                    _logger.LogError(ex, "An error occured while processing file {filePath}", filePath);
+                        result.FilesFailed++;
+                        _logger.LogError(ex, "An error occured while processing file {filePath}", filePath);
+                    }
                 }
-            }
 
-            if (result.FilesAdded > 0)
+                if (result.FilesAdded > 0)
+                {
+                    await _context.SaveChangesAsync(cancelToken);
+                }
+
+                result.ScanFinishedAt = DateTime.Now;
+                _logger.LogInformation("File scan completed. " +
+                    "Found: {FilesFound}, Added: {FilesAdded}, Skipped: {FilesSkipped}, Failed: {FilesFailed}",
+                    result.FilesFound, result.FilesAdded, result.FilesSkipped, result.FilesFailed);
+
+                return result;
+            }
+            finally 
             {
-                await _context.SaveChangesAsync(cancelToken);
+                _scanLock.Release();
             }
-
-            result.ScanFinishedAt = DateTime.Now;
-            _logger.LogInformation("File scan completed. " +
-                "Found: {FilesFound}, Added: {FilesAdded}, Skipped: {FilesSkipped}, Failed: {FilesFailed}",
-                result.FilesFound, result.FilesAdded, result.FilesSkipped, result.FilesFailed);
-
-            return result;
         }
     }
 }
