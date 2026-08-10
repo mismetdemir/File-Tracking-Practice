@@ -72,6 +72,42 @@ namespace FileTrackingPractice.Tests
             await Assert.ThrowsAsync<DirectoryNotFoundException>(() => service.ScanAsync(TestContext.Current.CancellationToken));
         }
 
+        [Fact]
+        public async Task ScanAsync_WhenCancellationRequested_ShouldThrowOperationCancelledException()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(folderPath);
+
+            try
+            {
+                using var context = GetDbContext();
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service = new FileScannerService(context, settingsMock.Object, loggerMock.Object);
+
+                using var cancellationTokenSource = new CancellationTokenSource();
+
+                cancellationTokenSource.Cancel();
+
+                await Assert.ThrowsAnyAsync<OperationCanceledException>(
+                    () => service.ScanAsync(cancellationTokenSource.Token));
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
+
         // ########## ScanLock Tests ##########
 
         [Fact]
