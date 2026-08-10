@@ -73,7 +73,55 @@ namespace FileTrackingPractice.Tests
         }
 
         // ########## ScanLock Tests ##########
-        
-        
+
+        [Fact]
+        public async Task ScanAsync_WhenCalledSimultaneously_ShouldAddFileOnlyOnce()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(folderPath);
+
+            try
+            {
+                var filePath = Path.Combine(folderPath, "test.txt");
+                await File.WriteAllTextAsync(filePath, "Test text", TestContext.Current.CancellationToken);
+
+                var databaseName = Guid.NewGuid().ToString();
+
+                using var context1 = GetDbContext(databaseName);
+                using var context2 = GetDbContext(databaseName);
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock1 = new Mock<ILogger<FileScannerService>>();
+                var loggerMock2 = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service1 = new FileScannerService(context1, settingsMock.Object, loggerMock1.Object);
+                var service2 = new FileScannerService(context2, settingsMock.Object, loggerMock2.Object);
+
+                var scan1 = service1.ScanAsync(TestContext.Current.CancellationToken);
+                var scan2 = service2.ScanAsync(TestContext.Current.CancellationToken);
+
+                var results = await Task.WhenAll(scan1, scan2);
+
+                Assert.Equal(1, results.Sum(result => result.FilesAdded));
+                Assert.Equal(1, results.Sum(result => result.FilesSkipped));
+
+                using var verificationContext = GetDbContext(databaseName);
+                var records = await verificationContext.FileRecords.ToListAsync(TestContext.Current.CancellationToken);
+
+                Assert.Single(records);
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
     }
 }
