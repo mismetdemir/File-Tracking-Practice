@@ -123,5 +123,465 @@ namespace FileTrackingPractice.Tests
                 Directory.Delete(folderPath, true);
             }
         }
+
+        // ########## Scan Tests ##########
+
+        [Fact]
+        public async Task ScanAsync_WhenFolderIsEmpty_ShouldReturnZeroCounts()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(folderPath);
+
+            try
+            {
+                using var context = GetDbContext();
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service = new FileScannerService(context, settingsMock.Object, loggerMock.Object);
+
+                var result = await service.ScanAsync(TestContext.Current.CancellationToken);
+
+                Assert.Equal(0, result.FilesFound);
+                Assert.Equal(0, result.FilesAdded);
+                Assert.Equal(0, result.FilesSkipped);
+                Assert.Equal(0, result.FilesFailed);
+                Assert.Empty(context.FileRecords);
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
+
+        [Fact]
+        public async Task ScanAsync_WhenFileExists_ShouldSaveFileMetadata()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(folderPath);
+
+            try
+            {
+                var filePath = Path.Combine(folderPath, "test.pdf");
+                await File.WriteAllTextAsync(filePath, "test text", TestContext.Current.CancellationToken);
+
+                var fileInfo = new FileInfo(filePath);
+
+                using var context = GetDbContext();
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service = new FileScannerService(context, settingsMock.Object, loggerMock.Object);
+
+                await service.ScanAsync(TestContext.Current.CancellationToken);
+
+                var record = await context.FileRecords.SingleAsync(TestContext.Current.CancellationToken);
+
+                Assert.Equal(fileInfo.Name, record.Name);
+                Assert.Equal("pdf", record.Extension);
+                Assert.Equal(fileInfo.Length, record.Size);
+                Assert.Equal(fileInfo.CreationTime, record.CreatedAt);
+                Assert.Equal(fileInfo.LastWriteTime, record.LastModifiedAt);
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
+
+        [Fact]
+        public async Task ScanAsync_WhenMultipleNewFilesExist_ShouldAddAllFiles()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(folderPath);
+
+            try
+            {
+                var filePath1 = Path.Combine(folderPath, "file1.txt");
+                var filePath2 = Path.Combine(folderPath, "file2.pdf");
+
+                await File.WriteAllTextAsync(filePath1, "file 1 test text", TestContext.Current.CancellationToken);
+                await File.WriteAllTextAsync(filePath2, "file 2 test text", TestContext.Current.CancellationToken);
+
+                using var context = GetDbContext();
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service = new FileScannerService(context, settingsMock.Object, loggerMock.Object);
+
+                var result = await service.ScanAsync(TestContext.Current.CancellationToken);
+                var records = await context.FileRecords.ToListAsync(TestContext.Current.CancellationToken);
+
+                Assert.Equal(2, result.FilesFound);
+                Assert.Equal(2, result.FilesAdded);
+                Assert.Equal(0, result.FilesSkipped);
+                Assert.Equal(0, result.FilesFailed);
+                Assert.Equal(2, records.Count);
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
+
+        [Fact]
+        public async Task ScanAsync_WhenFileAlreadyExists_ShouldSkipFile()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(folderPath);
+
+            try
+            {
+                var filePath = Path.Combine(folderPath, "test.txt");
+                await File.WriteAllTextAsync(filePath, "Test text", TestContext.Current.CancellationToken);
+
+                using var context = GetDbContext();
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service = new FileScannerService(context, settingsMock.Object, loggerMock.Object);
+
+                await service.ScanAsync(TestContext.Current.CancellationToken);
+                var secondResult = await service.ScanAsync(TestContext.Current.CancellationToken);
+
+                Assert.Equal(1, secondResult.FilesFound);
+                Assert.Equal(0, secondResult.FilesAdded);
+                Assert.Equal(1, secondResult.FilesSkipped);
+                Assert.Equal(0, secondResult.FilesFailed);
+                Assert.Single(context.FileRecords);
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
+
+        [Fact]
+        public async Task ScanAsync_WhenFileExistsInSubfolder_ShouldAddFile()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            var subfolderPath = Path.Combine(folderPath, "Subfolder");
+
+            Directory.CreateDirectory(subfolderPath);
+
+            try
+            {
+                var filePath = Path.Combine(subfolderPath, "test.txt");
+                await File.WriteAllTextAsync(filePath, "Test text", TestContext.Current.CancellationToken);
+
+                using var context = GetDbContext();
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service = new FileScannerService(context, settingsMock.Object, loggerMock.Object);
+
+                var result = await service.ScanAsync(TestContext.Current.CancellationToken);
+                var record = await context.FileRecords.SingleAsync(TestContext.Current.CancellationToken);
+
+                Assert.Equal(1, result.FilesFound);
+                Assert.Equal(1, result.FilesAdded);
+                Assert.Equal("test.txt", record.Name);
+                Assert.Equal(Path.GetFullPath(filePath), record.Path);
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
+
+        [Fact]
+        public async Task ScanAsync_WhenFileExtensionIsUppercase_ShouldSaveExtensionAsLowercase()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(folderPath);
+
+            try
+            {
+                var filePath = Path.Combine(folderPath, "test.PDF");
+                await File.WriteAllTextAsync(filePath, "test text", TestContext.Current.CancellationToken);
+
+                using var context = GetDbContext();
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service = new FileScannerService(context, settingsMock.Object, loggerMock.Object);
+
+                await service.ScanAsync(TestContext.Current.CancellationToken);
+                
+                var record = await context.FileRecords.SingleAsync(TestContext.Current.CancellationToken);
+
+                Assert.Equal("pdf", record.Extension);
+
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
+
+        [Fact]
+        public async Task ScanAsync_WhenFileHasNoExtension_ShouldSaveExtensionAsEmptyString()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(folderPath);
+
+            try
+            {
+                var filePath = Path.Combine(folderPath, "test");
+                await File.WriteAllTextAsync(filePath, "test text", TestContext.Current.CancellationToken);
+
+                using var context = GetDbContext();
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service = new FileScannerService(context, settingsMock.Object, loggerMock.Object);
+
+                await service.ScanAsync(TestContext.Current.CancellationToken);
+
+                var record = await context.FileRecords.SingleAsync(TestContext.Current.CancellationToken);
+
+                Assert.Equal("test", record.Name);
+                Assert.Empty(record.Extension);
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
+
+        [Fact]
+        public async Task ScanAsync_WhenSameNamedFilesExistInDifferentSubfolders_ShouldAddDistinctRecords()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+            var subfolderPath1 = Path.Combine(folderPath, "Subfolder1");
+            var subfolderPath2 = Path.Combine(folderPath, "Subfolder2");
+            var subfolderPath3 = Path.Combine(subfolderPath2, "Sub-Subfolder");
+
+            Directory.CreateDirectory(subfolderPath1);
+            Directory.CreateDirectory(subfolderPath3);
+
+            try
+            {
+                var filePath1 = Path.Combine(folderPath, "test.txt");
+                var filePath2 = Path.Combine(subfolderPath1, "test.txt");
+                var filePath3 = Path.Combine(subfolderPath2, "test.txt");
+                var filePath4 = Path.Combine(subfolderPath3, "test.txt");
+
+                await File.WriteAllTextAsync(filePath1, "top folder file", TestContext.Current.CancellationToken);
+                await File.WriteAllTextAsync(filePath2, "first subfolder file", TestContext.Current.CancellationToken);
+                await File.WriteAllTextAsync(filePath3, "second subfolder file", TestContext.Current.CancellationToken);
+                await File.WriteAllTextAsync(filePath4, "sub-subfolder file", TestContext.Current.CancellationToken);
+
+                using var context = GetDbContext();
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service = new FileScannerService(context, settingsMock.Object, loggerMock.Object);
+
+                var result = await service.ScanAsync(TestContext.Current.CancellationToken);
+                var records = await context.FileRecords.ToListAsync(TestContext.Current.CancellationToken);
+
+                Assert.Equal(4, result.FilesFound);
+                Assert.Equal(4, result.FilesAdded);
+                Assert.Equal(0, result.FilesSkipped);
+                Assert.Equal(0, result.FilesFailed);
+                
+                Assert.Equal(4, records.Count);
+                Assert.All(records, record => Assert.Equal("test.txt", record.Name));
+                Assert.Equal(4, records.Select(record => record.Path).Distinct().Count());
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
+
+        [Fact]
+        public async Task ScanAsync_WhenExistingAndNewFilesExist_ShouldAddNewAndSkipExisting()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(folderPath);
+
+            try
+            {
+                var filePath1 = Path.Combine(folderPath, "test1.txt");
+                var filePath2 = Path.Combine(folderPath, "test2.txt");
+
+                using var context = GetDbContext();
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service = new FileScannerService(context, settingsMock.Object, loggerMock.Object);
+
+                await File.WriteAllTextAsync(filePath1, "test text 1", TestContext.Current.CancellationToken);
+                await service.ScanAsync(TestContext.Current.CancellationToken);
+
+                await File.WriteAllTextAsync(filePath2, "test text 2", TestContext.Current.CancellationToken);
+                var result = await service.ScanAsync(TestContext.Current.CancellationToken);
+
+                Assert.Equal(2, result.FilesFound);
+                Assert.Equal(1, result.FilesAdded);
+                Assert.Equal(1, result.FilesSkipped);
+                Assert.Equal(0, result.FilesFailed);
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
+
+        [Fact]
+        public async Task ScanAsync_WhenScanCompletes_ShouldSetScanTimestamps()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(folderPath);
+
+            try
+            {
+                using var context = GetDbContext();
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service = new FileScannerService(context, settingsMock.Object, loggerMock.Object);
+
+                var result = await service.ScanAsync(TestContext.Current.CancellationToken);
+
+                Assert.NotEqual(default, result.ScanStartedAt);
+                Assert.NotEqual(default, result.ScanFinishedAt);
+                Assert.True(result.ScanFinishedAt >= result.ScanStartedAt);
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
+
+        [Fact]
+        public async Task ScanAsync_WhenScanCompletes_ShouldWriteInformationLog()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(folderPath);
+
+            try
+            {
+                using var context = GetDbContext();
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service = new FileScannerService(context, settingsMock.Object, loggerMock.Object);
+
+                await service.ScanAsync(TestContext.Current.CancellationToken);
+
+                loggerMock.Verify(
+                    logger => logger.Log(
+                        LogLevel.Information,
+                        It.IsAny<EventId>(),
+                        It.Is<It.IsAnyType>((value, type) => value.ToString()!.Contains("File scan completed.")),
+                        It.IsAny<Exception?>(),
+                        It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                    Times.Once);
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
     }
 }
