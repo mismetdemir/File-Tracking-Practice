@@ -18,12 +18,19 @@ namespace FileTrackingPractice.Tests
     {
         private static AppDbContext GetDbContext()
         {
+            return GetDbContext(Guid.NewGuid().ToString());
+        }
+
+        private static AppDbContext GetDbContext(string databaseName)
+        {
             var options = new DbContextOptionsBuilder<AppDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                    .Options;
+                .UseInMemoryDatabase(databaseName)
+                .Options;
 
             return new AppDbContext(options);
         }
+
+        // ########## Exception Tests ##########
 
         [Fact]
         public async Task ScanAsync_WhenFolderPathIsEmpty_ThrowsFileScanConfigurationException()
@@ -64,5 +71,9 @@ namespace FileTrackingPractice.Tests
 
             await Assert.ThrowsAsync<DirectoryNotFoundException>(() => service.ScanAsync(TestContext.Current.CancellationToken));
         }
+
+        // ########## ScanLock Tests ##########
+        
+        
     }
 }
