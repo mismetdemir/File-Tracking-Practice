@@ -23,6 +23,7 @@ builder.Services.AddScoped<IFileScannerService, FileScannerService>();
 builder.Services.AddHostedService<AutoFileScanService>();
 
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
 
 var app = builder.Build();
 

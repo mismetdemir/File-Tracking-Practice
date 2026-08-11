@@ -65,7 +65,11 @@ namespace FileTrackingPractice.Services
 
                 result.FilesFound = filePaths.Count;
 
-                var existingPaths = await _context.FileRecords.Select(file => file.Path).ToHashSetAsync(cancelToken);
+                var existingFiles = await _context.FileRecords
+                    .ToDictionaryAsync(
+                        file => file.Path,
+                        file => file,
+                        cancelToken);
 
                 foreach (var filePath in filePaths)
                 {
@@ -74,16 +78,32 @@ namespace FileTrackingPractice.Services
                     try
                     {
                         var currentPath = Path.GetFullPath(filePath);
+                        var hash = await CalculateHashAsync(currentPath, cancelToken);
+                        var fileInfo = new FileInfo(currentPath);
 
-                        if (existingPaths.Contains(currentPath))
+                        if (existingFiles.TryGetValue(currentPath, out var existingFile))
                         {
-                            result.FilesSkipped++;
-                            _logger.LogDebug("File {filePath} skipped because it already processed", filePath);
+                            if (existingFile.Hash == hash)
+                            {
+                                result.FilesSkipped++;
+                                _logger.LogDebug("File {filePath} skipped because file content did not change", filePath);
+
+                                continue;
+                            }
+
+                            existingFile.Name = fileInfo.Name;
+                            existingFile.Extension = fileInfo.Extension.TrimStart('.').ToLower();
+                            existingFile.Size = fileInfo.Length;
+                            existingFile.CreatedAt = fileInfo.CreationTime;
+                            existingFile.LastModifiedAt = fileInfo.LastWriteTime;
+                            existingFile.Hash = hash;
+
+                            result.FilesUpdated++;
+                            _logger.LogInformation("File {filePath} changes was staged for database update", filePath);
+
                             continue;
                         }
-
-                        var fileInfo = new FileInfo(currentPath);
-                        var hash = await CalculateHashAsync(currentPath, cancelToken);
+                        
                         var fileRecord = new FileRecord
                         {
                             Name = fileInfo.Name,
@@ -106,15 +126,19 @@ namespace FileTrackingPractice.Services
                     }
                 }
 
-                if (result.FilesAdded > 0)
+                if (result.FilesAdded > 0 || result.FilesUpdated > 0 )
                 {
                     await _context.SaveChangesAsync(cancelToken);
                 }
 
                 result.ScanFinishedAt = DateTime.Now;
                 _logger.LogInformation("File scan completed. " +
-                    "Found: {FilesFound}, Added: {FilesAdded}, Skipped: {FilesSkipped}, Failed: {FilesFailed}",
-                    result.FilesFound, result.FilesAdded, result.FilesSkipped, result.FilesFailed);
+                    "Found: {FilesFound}, " +
+                    "Added: {FilesAdded}, " +
+                    "Updated: {FilesUpdated}, " +
+                    "Skipped: {FilesSkipped}, " +
+                    "Failed: {FilesFailed}",
+                    result.FilesFound, result.FilesAdded, result.FilesUpdated, result.FilesSkipped, result.FilesFailed);
 
                 return result;
             }
