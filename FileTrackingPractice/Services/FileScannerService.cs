@@ -83,6 +83,7 @@ namespace FileTrackingPractice.Services
                         }
 
                         var fileInfo = new FileInfo(currentPath);
+                        var hash = await CalculateHashAsync(currentPath, cancelToken);
                         var fileRecord = new FileRecord
                         {
                             Name = fileInfo.Name,
@@ -90,7 +91,8 @@ namespace FileTrackingPractice.Services
                             Size = fileInfo.Length,
                             CreatedAt = fileInfo.CreationTime,
                             LastModifiedAt = fileInfo.LastWriteTime,
-                            Path = currentPath
+                            Path = currentPath,
+                            Hash = hash
                         };
 
                         await _context.FileRecords.AddAsync(fileRecord, cancelToken);
