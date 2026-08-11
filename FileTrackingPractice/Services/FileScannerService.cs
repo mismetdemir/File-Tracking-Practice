@@ -5,6 +5,7 @@ using FileTrackingPractice.Exceptions;
 using FileTrackingPractice.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using System.Security.Cryptography;
 
 namespace FileTrackingPractice.Services
 {
@@ -24,6 +25,15 @@ namespace FileTrackingPractice.Services
             _context = context;
             _settings = settings.Value;
             _logger = logger;
+        }
+
+        private static async Task<string> CalculateHashAsync(string filePath, CancellationToken cancelToken)
+        {
+            using FileStream stream = File.OpenRead(filePath);
+
+            var hash = await SHA256.HashDataAsync(stream, cancelToken);
+
+            return Convert.ToHexString(hash).ToLower();
         }
 
         public async Task<ScanResultDto> ScanAsync(CancellationToken cancelToken = default)
