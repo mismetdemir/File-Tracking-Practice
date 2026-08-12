@@ -551,6 +551,97 @@ namespace FileTrackingPractice.Tests
         }
 
         [Fact]
+        public async Task ScanAsync_WhenFileExists_ShouldSaveSHA256Hash()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(folderPath);
+
+            try
+            {
+                var filePath = Path.Combine(folderPath, "test.txt");
+                await File.WriteAllTextAsync(filePath, "Test text", TestContext.Current.CancellationToken);
+
+                using var context = GetDbContext();
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service = new FileScannerService(context, settingsMock.Object, loggerMock.Object);
+
+                await service.ScanAsync(TestContext.Current.CancellationToken);
+
+                var record = await context.FileRecords.SingleAsync(TestContext.Current.CancellationToken);
+
+                Assert.False(string.IsNullOrEmpty(record.Hash));
+                Assert.Equal(64, record.Hash.Length);
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
+
+        [Fact]
+        public async Task ScanAsync_WhenFileContentChanges_ShouldUpdateExistingFile()
+        {
+            var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
+
+            Directory.CreateDirectory(folderPath);
+
+            try
+            {
+                var filePath = Path.Combine(folderPath, "test.txt");
+                await File.WriteAllTextAsync(filePath, "Original text", TestContext.Current.CancellationToken);
+
+                using var context = GetDbContext();
+
+                var settingsMock = new Mock<IOptions<FileScanSettings>>();
+                var loggerMock = new Mock<ILogger<FileScannerService>>();
+
+                settingsMock
+                    .Setup(settings => settings.Value)
+                    .Returns(new FileScanSettings
+                    {
+                        FolderPath = folderPath
+                    });
+
+                var service = new FileScannerService(context, settingsMock.Object, loggerMock.Object);
+
+                await service.ScanAsync(TestContext.Current.CancellationToken);
+
+                var record = await context.FileRecords.SingleAsync(TestContext.Current.CancellationToken);
+                var oldHash = record.Hash;
+
+                await File.WriteAllTextAsync(filePath, "Changed text", TestContext.Current.CancellationToken);
+                
+                var result = await service.ScanAsync(TestContext.Current.CancellationToken);
+                var updatedRecord = await context.FileRecords.SingleAsync(TestContext.Current.CancellationToken);
+
+                Assert.Equal(1, result.FilesFound);
+                Assert.Equal(0, result.FilesAdded);
+                Assert.Equal(1, result.FilesUpdated);
+                Assert.Equal(0, result.FilesSkipped);
+                Assert.Equal(0, result.FilesFailed);
+
+                Assert.NotEqual(oldHash, updatedRecord.Hash);
+                Assert.Single(context.FileRecords);
+
+            }
+            finally
+            {
+                Directory.Delete(folderPath, true);
+            }
+        }
+
+        [Fact]
         public async Task ScanAsync_WhenScanCompletes_ShouldSetScanTimestamps()
         {
             var folderPath = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString());
