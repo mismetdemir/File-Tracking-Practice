@@ -189,6 +189,7 @@ namespace FileTrackingPractice.Tests
 
                 Assert.Equal(0, result.FilesFound);
                 Assert.Equal(0, result.FilesAdded);
+                Assert.Equal(0, result.FilesUpdated);
                 Assert.Equal(0, result.FilesSkipped);
                 Assert.Equal(0, result.FilesFailed);
                 Assert.Empty(context.FileRecords);
@@ -277,6 +278,7 @@ namespace FileTrackingPractice.Tests
 
                 Assert.Equal(2, result.FilesFound);
                 Assert.Equal(2, result.FilesAdded);
+                Assert.Equal(0, result.FilesUpdated);
                 Assert.Equal(0, result.FilesSkipped);
                 Assert.Equal(0, result.FilesFailed);
                 Assert.Equal(2, records.Count);
@@ -318,6 +320,7 @@ namespace FileTrackingPractice.Tests
 
                 Assert.Equal(1, secondResult.FilesFound);
                 Assert.Equal(0, secondResult.FilesAdded);
+                Assert.Equal(0, secondResult.FilesUpdated);
                 Assert.Equal(1, secondResult.FilesSkipped);
                 Assert.Equal(0, secondResult.FilesFailed);
                 Assert.Single(context.FileRecords);
@@ -489,6 +492,7 @@ namespace FileTrackingPractice.Tests
 
                 Assert.Equal(4, result.FilesFound);
                 Assert.Equal(4, result.FilesAdded);
+                Assert.Equal(0, result.FilesUpdated);
                 Assert.Equal(0, result.FilesSkipped);
                 Assert.Equal(0, result.FilesFailed);
                 
@@ -536,6 +540,7 @@ namespace FileTrackingPractice.Tests
 
                 Assert.Equal(2, result.FilesFound);
                 Assert.Equal(1, result.FilesAdded);
+                Assert.Equal(0, result.FilesUpdated);
                 Assert.Equal(1, result.FilesSkipped);
                 Assert.Equal(0, result.FilesFailed);
             }
