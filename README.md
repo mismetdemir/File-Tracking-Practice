@@ -92,7 +92,7 @@ komutunu kullanabilirsiniz.
 
 ### Tüm Endpointler
 
-![all endpoints][all]
+![all endpoints][all_endpoints]
 
 ### DTO Şemaları
 
@@ -140,14 +140,14 @@ Bir dosyada değişiklik olduğunda:
 
 ![one file changed][post_scan2]
 
-[all]: https://github.com/mismetdemir/File-Tracking-Practice/tree/master/SwaggerScreenshots/endpoints.png
-[schemas]: https://github.com/mismetdemir/File-Tracking-Practice/tree/master/SwaggerScreenshots/schemas.png
-[get_files]: https://github.com/mismetdemir/File-Tracking-Practice/tree/master/SwaggerScreenshots/get_files.png
-[get_files_id]: https://github.com/mismetdemir/File-Tracking-Practice/tree/master/SwaggerScreenshots/get_files_id.png
-[get_files_id_notfound]: https://github.com/mismetdemir/File-Tracking-Practice/tree/master/SwaggerScreenshots/get_files_id_notfound.png
-[get_files_search]: https://github.com/mismetdemir/File-Tracking-Practice/tree/master/SwaggerScreenshots/get_files_search.png
-[post_scan1]: https://github.com/mismetdemir/File-Tracking-Practice/tree/master/SwaggerScreenshots/post_files_scan.png
-[post_scan2]: https://github.com/mismetdemir/File-Tracking-Practice/tree/master/SwaggerScreenshots/post_files_scan_update.png
+[all_endpoints]: SwaggerScreenshots/endpoints.png
+[schemas]: SwaggerScreenshots/schemas.png
+[get_files]: SwaggerScreenshots/get_files.png
+[get_files_id]: SwaggerScreenshots/get_files_id.png
+[get_files_id_notfound]: SwaggerScreenshots/get_files_id_notfound.png
+[get_files_search]: SwaggerScreenshots/get_files_search.png
+[post_scan1]: SwaggerScreenshots/post_files_scan.png
+[post_scan2]: SwaggerScreenshots/post_files_scan_update.png
 
 ## Teknik Kararlar
 
