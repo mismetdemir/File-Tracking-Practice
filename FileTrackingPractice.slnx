@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="README.md" />
+  </Folder>
   <Project Path="FileTrackingPractice.Tests/FileTrackingPractice.Tests.csproj" Id="c636e931-48ff-451e-9ae1-3ec75dd7d163" />
   <Project Path="FileTrackingPractice/FileTrackingPractice.csproj" />
 </Solution>
