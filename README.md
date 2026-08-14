@@ -1,4 +1,36 @@
+<a id="top"></a>
+
 # Dosya Takip ve İşleme Servisi
+
+## İçindekiler
+
+* [Uygulamanın Çalıştırılması](#uygulama)
+* [Swagger Ekran Görüntüleri](#swagger)
+
+  * [Tüm Endpointler](#tum-endpointler)
+  * [DTO Şemaları](#dto-semalari)
+  * [GET: /api/files](#get-files)
+  * [GET: /api/files/{id}](#get-file-id)
+  * [GET: /api/files/search?extension={extension}](#get-files-search)
+  * [POST: /api/files/scan](#post-files-scan)
+* [Teknik Kararlar](#teknik-kararlar)
+* [Kullanılan Teknolojiler](#kullanilan-teknolojiler)
+* [Özellikler](#ozellikler)
+* [Kaydedilen Dosya Bilgileri](#kaydedilen-dosya-bilgileri)
+* [Proje Yapısı](#proje-yapisi)
+* [Yapılandırma](#yapilandirma)
+* [Dosya Tarama Mantığı](#dosya-tarama-mantigi)
+* [Otomatik Tarama](#otomatik-tarama)
+* [Eşzamanlılık Kontrolü](#eszamanlilik-kontrolu)
+* [Hata Yönetimi](#hata-yonetimi)
+* [Loglama](#loglama)
+* [DTO ve Mapping Kullanımı](#dto-mapping)
+* [Veritabanı](#veritabani)
+* [Unit Testler](#unit-testler)
+
+---
+
+<a id="uygulama"></a>
 
 ## Uygulamanın Çalıştırılması
 
@@ -88,21 +120,35 @@ dotnet test
 
 komutunu kullanabilirsiniz.
 
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="swagger"></a>
+
 ## Swagger Ekran Görüntüleri
+
+<a id="tum-endpointler"></a>
 
 ### Tüm Endpointler
 
 ![all endpoints][all_endpoints]
 
+<a id="dto-semalari"></a>
+
 ### DTO Şemaları
 
 ![schemas][schemas]
+
+<a id="get-files"></a>
 
 ### GET: `/api/files`
 
 Veritabanında bulunan tüm işlenmiş dosyaları listeler.
 
 ![get all files][get_files]
+
+<a id="get-file-id"></a>
 
 ### GET: `/api/files/{id}`
 
@@ -113,6 +159,8 @@ Belirtilen ID'ye sahip dosya kaydını döndürür.
 Kayıt bulunamazsa:
 
 ![404 Not Found][get_files_id_notfound]
+
+<a id="get-files-search"></a>
 
 ### GET: `/api/files/search?extension={extension}`
 
@@ -129,6 +177,8 @@ docx
 ```
 
 ![get by extension][get_files_search]
+
+<a id="post-files-scan"></a>
 
 ### POST: `/api/files/scan`
 
@@ -149,30 +199,40 @@ Bir dosyada değişiklik olduğunda:
 [post_scan1]: SwaggerScreenshots/post_files_scan.png
 [post_scan2]: SwaggerScreenshots/post_files_scan_update.png
 
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="teknik-kararlar"></a>
+
 ## Teknik Kararlar
 
 Projede katmanlı ve modüler bir yapı kullandım.
-API istekleri `Controller` katmanında karşılanırken, dosya tarama işlemleri `Service` katmanında tutuldu. 
-Veritabanı işlemleri Entity Framework Core üzerinden `AppDbContext` ile gerçekleştirildi. 
+API istekleri `Controller` katmanında karşılanırken, dosya tarama işlemleri `Service` katmanında tutuldu.
+Veritabanı işlemleri Entity Framework Core üzerinden `AppDbContext` ile gerçekleştirildi.
 API tarafında veritabanı modellerini doğrudan döndürmemek adına DTO ve mapping yapısı kullandım.
 
-Veritabanı olarak kurulumu ve kullanımına alışık olduğum için SQLite tercih ettim. 
-Klasör yolunu ve tarama aralığını `appsettings.json` üzerinden yönetilebilir şekilde ayarladım. 
+Veritabanı olarak kurulumu ve kullanımına alışık olduğum için SQLite tercih ettim.
+Klasör yolunu ve tarama aralığını `appsettings.json` üzerinden yönetilebilir şekilde ayarladım.
 Otomatik tarama fonksiyonunu `BackgroundService` sınıfında oluşturdum ve 
 manuel tarama ile otomatik taramanın aynı anda çalışmasını engellemek için `SemaphoreSlim` kullanıldım.
 
-Dosyalarda herhangi bir içerik değişikliği olup olmadığını tespit etmek için
-dosya içeriğinden SHA-256 hash değeri hesaplandı. 
-Aynı yoldaki dosyanın hash değeri değişmemişse dosya tekrar işlenmeyecek, 
-hash değişmişse mevcut kayıt güncellenecek şekilde ayarladım.
+Dosyalarda herhangi bir içerik değişikliği olup olmadığını tespit etmek için 
+dosya içeriğinden SHA-256 hash değeri hesaplandı.
 
 Performans açısından her dosya için ayrı veritabanı sorgusu yapmak yerine 
 mevcut dosya kayıtları tek sorguda alınarak bellekte karşılaştırılmasını sağladım. 
 Hataların merkezi şekilde yönetilmesi için `IExceptionHandler` tabanlı global exception 
 handling ve standart hata cevapları için `ProblemDetails` kullandım. 
-Tarama işlemleri ve oluşan hatalar `Microsoft.Extensions.Logging` ile loglandı. 
+Tarama işlemleri ve oluşan hatalar `Microsoft.Extensions.Logging` ile loglandı.
 Ayrıca dosya tarama senaryolarının doğruluğunu kontrol etmek amacıyla xUnit, Moq 
 ve Entity Framework Core InMemory kullanarak unit testler yazdım.
+
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="kullanilan-teknolojiler"></a>
 
 ## Kullanılan Teknolojiler
 
@@ -185,6 +245,12 @@ ve Entity Framework Core InMemory kullanarak unit testler yazdım.
 * xUnit
 * Moq
 * Entity Framework Core InMemory
+
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="ozellikler"></a>
 
 ## Özellikler
 
@@ -203,6 +269,12 @@ ve Entity Framework Core InMemory kullanarak unit testler yazdım.
 * Tarama işlemlerini ve hataları loglar.
 * Dosya tarama servisi için unit testler içerir.
 
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="kaydedilen-dosya-bilgileri"></a>
+
 ## Kaydedilen Dosya Bilgileri
 
 Her dosya için aşağıdaki bilgiler tutulur:
@@ -216,6 +288,12 @@ Her dosya için aşağıdaki bilgiler tutulur:
 * SHA-256 hash değeri
 
 Tam dosya yolu veritabanında tutulmasına rağmen API üzerinden kullanıcıya relative path döndürülür.
+
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="proje-yapisi"></a>
 
 ## Proje Yapısı
 
@@ -264,6 +342,12 @@ FileTrackingPractice/
     └── FileScannerServiceTests.cs
 ```
 
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="yapilandirma"></a>
+
 ## Yapılandırma
 
 Taranacak klasör, otomatik tarama aralığı ve veritabanı bağlantısı `appsettings.json` üzerinden yönetilir.
@@ -295,7 +379,13 @@ Projeyi çalıştırmadan önce `FolderPath` alanının bilgisayarınızda bulun
 
 `IntervalInSeconds`, Background Service tarafından otomatik taramanın kaç saniyede bir gerçekleştirileceğini belirler.
 
-# Dosya Tarama Mantığı
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="dosya-tarama-mantigi"></a>
+
+## Dosya Tarama Mantığı
 
 Tarama başladığında ayarlarda belirtilen klasör ve klasörün 
 alt klasörlerinde bulunan dosyalar alınır.
@@ -316,7 +406,13 @@ mevcut kayıt yeni dosya bilgileriyle güncellenir.
 Bu sayede değişmeyen dosyaların gereksiz şekilde tekrar işlenmesi engellenirken, 
 içeriği değiştirilen dosyalar yeniden işlenebilir.
 
-# Otomatik Tarama
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="otomatik-tarama"></a>
+
+## Otomatik Tarama
 
 Otomatik klasör taraması ASP.NET Core `BackgroundService` kullanılarak gerçekleştirilmiştir.
 
@@ -333,7 +429,13 @@ ayarı üzerinden değiştirilebilir.
 Bu yapı sayesinde kullanıcı manuel olarak API isteği göndermese 
 bile klasör belirli aralıklarla otomatik olarak kontrol edilir.
 
-# Eşzamanlılık Kontrolü
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="eszamanlilik-kontrolu"></a>
+
+## Eşzamanlılık Kontrolü
 
 Otomatik tarama çalışırken kullanıcı aynı anda:
 
@@ -352,7 +454,13 @@ Bu yapı aynı anda yalnızca bir tarama işleminin çalışmasına izin verir.
 
 Bir tarama devam ederken başka bir tarama isteği gelirse ikinci işlem mevcut taramanın tamamlanmasını bekler.
 
-# Hata Yönetimi
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="hata-yonetimi"></a>
+
+## Hata Yönetimi
 
 Uygulamada merkezi hata yönetimi kullanılmaktadır.
 
@@ -369,7 +477,13 @@ eşleştirilmesi kolaylaştırılmıştır.
 Bu yapı sayesinde Controller veya Service içerisinde aynı hata yönetimi 
 kodlarının tekrar tekrar yazılması engellenmiştir.
 
-# Loglama
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="loglama"></a>
+
+## Loglama
 
 Projede `Microsoft.Extensions.Logging` kullanılmaktadır.
 
@@ -384,7 +498,13 @@ Tarama işlemi sırasında aşağıdaki durumlar loglanır:
 
 Tarama tamamlandığında bulunan, eklenen, güncellenen, atlanan ve başarısız olan dosya sayıları loglanır.
 
-# DTO ve Mapping Kullanımı
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="dto-mapping"></a>
+
+## DTO ve Mapping Kullanımı
 
 Veritabanı entity'leri doğrudan API üzerinden döndürülmemektedir.
 
@@ -402,7 +522,13 @@ Aynı zamanda veritabanında tutulan tam dosya yolunun doğrudan kullanıcıya g
 
 API üzerinden bunun yerine relative path döndürülür.
 
-# Veritabanı
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="veritabani"></a>
+
+## Veritabanı
 
 Projede Entity Framework Core ile birlikte SQLite kullanılmaktadır.
 
@@ -420,7 +546,13 @@ bulunmaktadır.
 
 Dosyanın path alanı için unique kontrol kullanılarak aynı dosya yolunun birden fazla kez kaydedilmesi engellenmektedir.
 
-# Unit Testler
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
+
+---
+
+<a id="unit-testler"></a>
+
+## Unit Testler
 
 Projede ayrı bir xUnit test projesi bulunmaktadır:
 
@@ -436,7 +568,7 @@ Testlerde aşağıdaki teknolojiler kullanılmıştır:
 
 Test edilen senaryolar arasında şunlar bulunmaktadır:
 
-* FolderPath değerinin tanımlanmamış olması
+* `FolderPath` değerinin tanımlanmamış olması
 * Belirtilen klasörün bulunamaması
 * Cancellation isteği
 * Eşzamanlı tarama işlemleri
@@ -460,3 +592,5 @@ dotnet test
 ```
 
 komutu kullanılabilir.
+
+<p align="right"><a href="#top">⬆ Başa Dön</a></p>
